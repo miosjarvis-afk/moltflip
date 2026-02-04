@@ -53,7 +53,8 @@ const CONFIG = {
 };
 
 // ============ DATABASE SETUP ============
-const db = new Database('/home/node/openclaw/projects/moltflip/api/moltflip.db');
+const DB_PATH = process.env.DB_PATH || './moltflip.db';
+const db = new Database(DB_PATH);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS api_keys (
