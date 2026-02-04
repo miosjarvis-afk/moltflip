@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: moltflip-api
+    env: node
+    buildCommand: cd api && npm install
+    startCommand: cd api && node server-production.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NETWORK
+        value: devnet
