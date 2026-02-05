@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Identity App - Database Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: system-ui; max-width: 600px; margin: 50px auto; padding: 20px; }
+        button { background: #4CAF50; color: white; border: none; padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 5px; width: 100%; }
+        button:hover { background: #45a049; }
+        #status { margin-top: 20px; padding: 15px; border-radius: 5px; display: none; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Identity App Setup</h1>
+    <p>Click the button below to set up your database tables.</p>
+    
+    <button onclick="setupDatabase()">Setup Database</button>
+    
+    <div id="status"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://gpnfwohxrpslevsmqoum.supabase.co';
+        const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwbmZ3b2h4cnBzbGV2c21xb3VtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDI5NDE5OCwiZXhwIjoyMDg1ODcwMTk4fQ.RBw_zaVgYWISZcKe8-GmRso-Pk-UsscKLLKgD4AMURs';
+        
+        async function setupDatabase() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'loading';
+            statusDiv.innerHTML = '⏳ Setting up database...';
+            
+            const schema = \`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), email TEXT UNIQUE NOT NULL, created_at TIMESTAMP DEFAULT NOW(), onboarding_completed BOOLEAN DEFAULT FALSE, last_active_at TIMESTAMP, timezone TEXT DEFAULT 'Europe/Berlin', push_enabled BOOLEAN DEFAULT TRUE, push_time TIME DEFAULT '09:00:00');
+CREATE TABLE IF NOT EXISTS goals (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID REFERENCES users(id) ON DELETE CASCADE, area TEXT NOT NULL, goal_text TEXT NOT NULL, target_identity TEXT NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, status TEXT DEFAULT 'active', created_at TIMESTAMP DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS daily_actions (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), goal_id UUID REFERENCES goals(id) ON DELETE CASCADE, action_text TEXT NOT NULL, action_order INTEGER NOT NULL, low_energy_variant TEXT, is_template BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS action_logs (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID REFERENCES users(id) ON DELETE CASCADE, action_id UUID REFERENCES daily_actions(id) ON DELETE CASCADE, log_date DATE NOT NULL, started_at TIMESTAMP, status TEXT NOT NULL, completion_note TEXT, xp_earned INTEGER DEFAULT 0, xp_type TEXT, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(action_id, log_date));
+CREATE TABLE IF NOT EXISTS wtf_logs (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID REFERENCES users(id) ON DELETE CASCADE, log_date DATE NOT NULL, reason TEXT NOT NULL, micro_action TEXT, completed BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS struggle_logs (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID REFERENCES users(id) ON DELETE CASCADE, log_date DATE NOT NULL, struggle_type TEXT NOT NULL, skill_move TEXT NOT NULL, xp_earned INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS daily_closes (id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), user_id UUID REFERENCES users(id) ON DELETE CASCADE, close_date DATE NOT NULL, showed_up BOOLEAN DEFAULT TRUE, total_action_xp INTEGER DEFAULT 0, total_learning_xp INTEGER DEFAULT 0, total_resilienz_xp INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, close_date));
+DO $$ BEGIN ALTER TABLE users ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE goals ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE daily_actions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE action_logs ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE wtf_logs ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE struggle_logs ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE daily_closes ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN OTHERS THEN NULL; END $$;\`;
+
+            try {
+                const response = await fetch(SUPABASE_URL + '/rest/v1/rpc', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SERVICE_KEY,
+                        'Authorization': 'Bearer ' + SERVICE_KEY
+                    },
+                    body: JSON.stringify({ query: schema })
+                });
+
+                if (response.ok) {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = '✅ Database setup complete! You can now use the app.';
+                } else {
+                    const error = await response.text();
+                    statusDiv.className = 'error';
+                    statusDiv.innerHTML = '❌ Setup failed. Please copy the SQL from the link below and paste it into Supabase SQL Editor:<br><br><a href="https://supabase.com/dashboard/project/gpnfwohxrpslevsmqoum/sql/new" target="_blank">Open SQL Editor</a>';
+                }
+            } catch (error) {
+                statusDiv.className = 'error';
+                statusDiv.innerHTML = '❌ Error: ' + error.message + '<br><br>Please use manual setup: <a href="https://supabase.com/dashboard/project/gpnfwohxrpslevsmqoum/sql/new" target="_blank">SQL Editor</a>';
+            }
+        }
+    </script>
+</body>
+</html>
